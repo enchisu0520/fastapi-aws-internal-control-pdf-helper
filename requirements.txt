@@ -1,0 +1,11 @@
+fastapi==0.110.0
+uvicorn==0.27.1
+python-multipart==0.0.9
+python-dotenv==1.0.1
+boto3==1.34.34
+langchain==0.1.9
+langchain-community==0.0.24
+faiss-cpu==1.7.4
+python-magic==0.4.27
+uuid==1.30
+numpy==1.26.4 

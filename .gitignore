@@ -1,0 +1,66 @@
+# 忽略 /backend/vector_store 目錄下的檔案
+/vector_store
+/data
+main_alternative.py
+vector_store_alternative.py
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Environment variables
+.env
+.venv
+venv/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.project
+.pydevproject
+.settings/
+
+# Logs
+*.log
+logs/
+log/
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
+
+# System files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Node (if using any JavaScript/Node.js)
+node_modules/
+.next
+/.next/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
