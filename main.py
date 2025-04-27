@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from typing import Optional
 import uvicorn
 from dotenv import load_dotenv
+from text_classifier import InternalControlClassifier
 
 from langchain_community.embeddings import BedrockEmbeddings
 from langchain.llms.bedrock import Bedrock
@@ -16,6 +17,7 @@ from langchain_community.document_loaders import TextLoader
 from langchain.prompts import PromptTemplate
 from langchain.chains import RetrievalQA
 from langchain_community.vectorstores import FAISS
+# from sentence_transformers import SentenceTransformer, util
 
 # Load environment variables
 load_dotenv()
@@ -42,6 +44,9 @@ bedrock_embeddings = BedrockEmbeddings(model_id="amazon.titan-embed-text-v1", cl
 folder_path = "./vector_store/"
 os.makedirs(folder_path, exist_ok=True)
 
+# Initialize the classifier
+classifier = InternalControlClassifier()
+
 # Define models for request/response
 class QueryRequest(BaseModel):
     request_id: str
@@ -49,6 +54,13 @@ class QueryRequest(BaseModel):
 
 class QueryResponse(BaseModel):
     response: str
+
+class ClassificationRequest(BaseModel):
+    uploadedText: str
+
+class ClassificationResponse(BaseModel):
+    category: str
+    similarity_score: float
 
 class UploadResponse(BaseModel):
     request_id: str
@@ -149,16 +161,32 @@ async def upload_file(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/query", response_model=QueryResponse)
-async def query(request: QueryRequest):
+@app.post("/queryBedrock", response_model=QueryResponse)
+async def query_bedrock(request: QueryRequest):
     try:
         file_name = f"{request.request_id}"
         vectorstore = load_index(file_name)
         llm = get_llm()
         
+        # Get LLM response
         response = get_response(llm, vectorstore, request.question)
         
-        return QueryResponse(response=response)
+        return QueryResponse(
+            response=response
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/classifyText", response_model=ClassificationResponse)
+async def classify_document(request: ClassificationRequest):
+    try:
+        # Get document classification
+        category, similarity_score = classifier.classify_document(request.uploadedText)
+        
+        return ClassificationResponse(
+            category=category,
+            similarity_score=float(similarity_score)
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
