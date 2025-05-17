@@ -71,11 +71,10 @@ class QueryResponse(BaseModel):
     response: str
 
 class ClassificationRequest(BaseModel):
-    uploadedText: str
+    fileNames: list[str]
 
 class ClassificationResponse(BaseModel):
-    category: str
-    similarity_score: float
+    results: list[dict[str, str | float]]
 
 class UploadResponse(BaseModel):
     request_id: str
@@ -287,13 +286,26 @@ async def query_bedrock(request: QueryRequest):
 @app.post("/classifyText", response_model=ClassificationResponse)
 async def classify_document(request: ClassificationRequest):
     try:
-        # Get document classification
-        category, similarity_score = classifier.classify_document(request.uploadedText)
+        results = []
+        for filename in request.fileNames:
+            # Get the text file path
+            text_filename = os.path.splitext(filename)[0] + '.txt'
+            text_file_path = os.path.join(folder_path, text_filename)
+            
+            # Read the text content
+            with open(text_file_path, 'r', encoding='utf-8') as f:
+                text_content = f.read()
+            
+            # Get document classification
+            category, similarity_score = classifier.classify_document(text_content)
+            
+            results.append({
+                "fileName": filename,
+                "category": category,
+                "similarity_score": float(similarity_score)
+            })
         
-        return ClassificationResponse(
-            category=category,
-            similarity_score=float(similarity_score)
-        )
+        return ClassificationResponse(results=results)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
