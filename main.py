@@ -81,6 +81,13 @@ class UploadResponse(BaseModel):
     request_id: str
     chunks: int
 
+
+class ExtractDateRequest(BaseModel):
+    fileNames: list[str]
+
+class ExtractDateResponse(BaseModel):
+    results: list[dict[str, str]]
+
 # Helper functions
 def get_unique_id():
     return str(uuid.uuid4())
@@ -287,6 +294,43 @@ async def classify_document(request: ClassificationRequest):
             category=category,
             similarity_score=float(similarity_score)
         )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/extractDate", response_model=ExtractDateResponse)
+async def extract_date(request: ExtractDateRequest):
+    try:
+        results = []
+        for filename in request.fileNames:
+            # Get the text file path
+            text_filename = os.path.splitext(filename)[0] + '.txt'
+            text_file_path = os.path.join(folder_path, text_filename)
+            
+            # Read the text content
+            with open(text_file_path, 'r', encoding='utf-8') as f:
+                text_content = f.read()
+            
+            # Remove all spaces from the text before matching
+            text_without_spaces = text_content.replace(" ", "")
+            
+            # Pattern to match date after "日期:"
+            pattern = r'日期:(\d{3}年\d{1,2}月\d{1,2}日)'
+            # Using re.search() to get the first match after "日期:"
+            match = re.search(pattern, text_without_spaces)
+            
+            if match:
+                # Return the captured date group
+                results.append({
+                    "fileName": filename,
+                    "date": match.group(1)
+                })
+            else:
+                results.append({
+                    "fileName": filename,
+                    "date": "No date found"
+                })
+            
+        return ExtractDateResponse(results=results)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
