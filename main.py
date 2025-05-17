@@ -3,7 +3,7 @@ import uuid
 import boto3
 from fastapi import FastAPI, UploadFile, File, HTTPException, Form
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from pydantic import BaseModel
 from typing import Optional
 import uvicorn
@@ -393,6 +393,21 @@ async def store_result(request: StoreResultRequest):
         return StoreResultResponse(
             message=f"Successfully stored {len(new_rows)} results",
             file_path=excel_path
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/downloadResults")
+async def download_results():
+    try:
+        excel_path = "./results/internal_control_results.xlsx"
+        if not os.path.exists(excel_path):
+            raise HTTPException(status_code=404, detail="No results file found")
+        
+        return FileResponse(
+            path=excel_path,
+            filename="internal_control_results.xlsx",
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
