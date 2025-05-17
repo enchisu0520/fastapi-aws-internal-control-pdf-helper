@@ -1,6 +1,8 @@
 # 忽略 /backend/vector_store 目錄下的檔案
 /vector_store
 /data
+/ocr_output
+/results
 main_alternative.py
 vector_store_alternative.py
 
