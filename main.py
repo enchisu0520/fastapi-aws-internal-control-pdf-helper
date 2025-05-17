@@ -204,25 +204,37 @@ def process_pdf_with_ocr(file_path: str, request_id: str, original_filename: str
 # API endpoints
 @app.post("/upload", response_model=UploadResponse)
 async def upload_file(file: UploadFile = File(...)):
-    if not file.filename.endswith('.txt'):
-        raise HTTPException(status_code=400, detail="Only TXT files are allowed")
+    if not file.filename.lower().endswith('.pdf'):
+        raise HTTPException(status_code=400, detail="Only PDF files are allowed")
     
     try:
         request_id = get_unique_id()
-        save_file_name = f"{folder_path}{request_id}.txt"
         
-        # Save the uploaded file
-        with open(save_file_name, "wb") as buffer:
+        # Save uploaded PDF to temporary file
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as temp_file:
             content = await file.read()
-            buffer.write(content)
+            temp_file.write(content)
+            temp_file_path = temp_file.name
 
-        # Process the file
-        loader = TextLoader(save_file_name, encoding='utf-8')
+        # Process PDF with OCR
+        extracted_text = process_pdf_with_ocr(temp_file_path, request_id, file.filename)
+        
+        # Save extracted text to file for vector store with original filename
+        text_filename = os.path.splitext(file.filename)[0] + '.txt'
+        text_file_path = os.path.join(folder_path, text_filename)
+        with open(text_file_path, "w", encoding='utf-8') as text_file:
+            text_file.write(extracted_text)
+
+        # Process the extracted text
+        loader = TextLoader(text_file_path, encoding='utf-8')
         pages = loader.load_and_split()
         splitted_docs = split_text(pages)
 
         # Create vector store
         file_name = create_vector_store(request_id, splitted_docs)
+
+        # Clean up temporary PDF file
+        os.unlink(temp_file_path)
 
         return UploadResponse(
             request_id=request_id,
