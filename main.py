@@ -54,8 +54,8 @@ bucket = storage_client.get_bucket('twse-ocr-result')
 feature = vision.Feature(type_=vision.Feature.Type.DOCUMENT_TEXT_DETECTION)
 
 # Set up folder paths
-folder_path = "./vector_store/"
-ocr_output_path = "./ocr_output/"
+folder_path = os.path.abspath("./vector_store/")
+ocr_output_path = os.path.abspath("./ocr_output/")
 os.makedirs(folder_path, exist_ok=True)
 os.makedirs(ocr_output_path, exist_ok=True)
 
