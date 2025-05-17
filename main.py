@@ -64,11 +64,10 @@ classifier = InternalControlClassifier()
 
 # Define models for request/response
 class QueryRequest(BaseModel):
-    request_id: str
-    question: str
+    fileNames: list[str]
 
 class QueryResponse(BaseModel):
-    response: str
+    results: list[dict[str, str]]
 
 class ClassificationRequest(BaseModel):
     fileNames: list[str]
@@ -249,11 +248,46 @@ async def upload_file(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/queryBedrock", response_model=QueryResponse)
-async def query_bedrock(request: QueryRequest):
+# @app.post("/queryBedrock", response_model=QueryResponse)
+# async def query_bedrock(request: QueryRequest):
+#     try:
+#         results = []
+#         question = "請用繁體中文回答，證券商被罰款多少錢？請以「新臺幣xx萬元」的格式回答"
+#         
+#         for filename in request.fileNames:
+#             # Get the text file path
+#             text_filename = os.path.splitext(filename)[0] + '.txt'
+#             text_file_path = os.path.join(folder_path, text_filename)
+#             
+#             # Read the text content
+#             with open(text_file_path, 'r', encoding='utf-8') as f:
+#                 text_content = f.read()
+#             
+#             # Create a temporary vector store for this file
+#             loader = TextLoader(text_file_path, encoding='utf-8')
+#             pages = loader.load_and_split()
+#             splitted_docs = split_text(pages)
+#             vectorstore = FAISS.from_documents(splitted_docs, bedrock_embeddings)
+#             
+#             # Get LLM response
+#             llm = get_llm()
+#             response = get_response(llm, vectorstore, question)
+#             
+#             results.append({
+#                 "fileName": filename,
+#                 "response": response
+#             })
+#         
+#         return QueryResponse(results=results)
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/findFineAmount", response_model=QueryResponse)
+async def find_fine_amount(request: QueryRequest):
     try:
         results = []
-        question = "請用繁體中文回答，證券商被罰款多少錢？請以「新臺幣xx萬元」的格式回答"
+        # 正則表達式匹配 "新台幣" 或 "新臺幣" 後面跟著數字和"萬元"，但不包含"以上"
+        pattern = r'新[台臺]幣(\d+)萬元(?!以上)'
         
         for filename in request.fileNames:
             # Get the text file path
@@ -264,15 +298,19 @@ async def query_bedrock(request: QueryRequest):
             with open(text_file_path, 'r', encoding='utf-8') as f:
                 text_content = f.read()
             
-            # Create a temporary vector store for this file
-            loader = TextLoader(text_file_path, encoding='utf-8')
-            pages = loader.load_and_split()
-            splitted_docs = split_text(pages)
-            vectorstore = FAISS.from_documents(splitted_docs, bedrock_embeddings)
+            # 移除所有空格
+            text_content = text_content.replace(" ", "")
             
-            # Get LLM response
-            llm = get_llm()
-            response = get_response(llm, vectorstore, question)
+            # Find all matches
+            matches = re.finditer(pattern, text_content)
+            fine_amounts = []
+            
+            for match in matches:
+                amount = match.group(0)  # 完整的匹配字串，如 "新台幣50萬元"
+                fine_amounts.append(amount)
+            
+            # 如果找到多個金額，用逗號分隔
+            response = "、".join(fine_amounts) if fine_amounts else "未找到罰款金額"
             
             results.append({
                 "fileName": filename,
