@@ -368,7 +368,8 @@ async def store_result(request: StoreResultRequest):
         for result in request.results:
             new_row = {
                 "Company Code": result["companyCode"],
-                "Submitted Date": result["date"],
+                "Signed Date": result["date"],
+                "Upload Date": result["uploadDate"],
                 "Fined Amount": result["finedAmount"],
                 "Classification Category": result["category"],
                 "Recorded Date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -381,7 +382,7 @@ async def store_result(request: StoreResultRequest):
             df = pd.read_excel(excel_path)
         else:
             # Create new DataFrame with headers
-            df = pd.DataFrame(columns=["Company Code", "Submitted Date", "Fined Amount", 
+            df = pd.DataFrame(columns=["Company Code", "Signed Date", "Upload Date", "Fined Amount", 
                                      "Classification Category", "Recorded Date"])
         
         # Append new rows
