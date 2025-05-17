@@ -79,6 +79,12 @@ class UploadResponse(BaseModel):
     request_id: str
     chunks: int
 
+class StoreResultRequest(BaseModel):
+    results: list[dict[str, str]]
+
+class StoreResultResponse(BaseModel):
+    message: str
+    file_path: str
 
 class ExtractDateRequest(BaseModel):
     fileNames: list[str]
@@ -344,6 +350,50 @@ async def classify_document(request: ClassificationRequest):
             })
         
         return ClassificationResponse(results=results)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/storeResult", response_model=StoreResultResponse)
+async def store_result(request: StoreResultRequest):
+    try:
+        # Create results directory if it doesn't exist
+        results_dir = "./results"
+        os.makedirs(results_dir, exist_ok=True)
+        
+        # Excel file path
+        excel_path = os.path.join(results_dir, "internal_control_results.xlsx")
+        
+        # Create new rows data
+        new_rows = []
+        for result in request.results:
+            new_row = {
+                "Company Code": result["companyCode"],
+                "Submitted Date": result["date"],
+                "Fined Amount": result["finedAmount"],
+                "Classification Category": result["category"],
+                "Recorded Date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            }
+            new_rows.append(new_row)
+        
+        # Check if file exists
+        if os.path.exists(excel_path):
+            # Read existing file
+            df = pd.read_excel(excel_path)
+        else:
+            # Create new DataFrame with headers
+            df = pd.DataFrame(columns=["Company Code", "Submitted Date", "Fined Amount", 
+                                     "Classification Category", "Recorded Date"])
+        
+        # Append new rows
+        df = pd.concat([df, pd.DataFrame(new_rows)], ignore_index=True)
+        
+        # Save to Excel
+        df.to_excel(excel_path, index=False)
+        
+        return StoreResultResponse(
+            message=f"Successfully stored {len(new_rows)} results",
+            file_path=excel_path
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
