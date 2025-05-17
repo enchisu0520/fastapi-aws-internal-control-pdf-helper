@@ -17,7 +17,6 @@ from langchain_community.document_loaders import TextLoader
 from langchain.prompts import PromptTemplate
 from langchain.chains import RetrievalQA
 from langchain_community.vectorstores import FAISS
-# from sentence_transformers import SentenceTransformer, util
 
 # Load environment variables
 load_dotenv()
@@ -77,18 +76,12 @@ def split_text(pages, chunk_size=1000, chunk_overlap=200):
 def create_vector_store(request_id, documents):
     vectorstore_faiss = FAISS.from_documents(documents, bedrock_embeddings)
     vectorstore_faiss.save_local(folder_path=folder_path, index_name=request_id)
+
+    # if need to use S3 storage
+    # s3_client.upload_file(Filename=f"{folder_path}/{file_name}.faiss", Bucket=BUCKET_NAME, Key=f"{file_name}.faiss")
+    # s3_client.upload_file(Filename=f"{folder_path}/{file_name}.pkl", Bucket=BUCKET_NAME, Key=f"{file_name}.pkl")
+    
     return request_id
-
-# def create_vector_store(request_id, documents):
-#     vectorstore_faiss = FAISS.from_documents(documents, bedrock_embeddings)
-#     file_name = f"{request_id}.bin"
-#     vectorstore_faiss.save_local(index_name=file_name, folder_path=folder_path)
-
-#     # Uncomment to use S3 storage
-#     # s3_client.upload_file(Filename=f"{folder_path}/{file_name}.faiss", Bucket=BUCKET_NAME, Key=f"{file_name}.faiss")
-#     # s3_client.upload_file(Filename=f"{folder_path}/{file_name}.pkl", Bucket=BUCKET_NAME, Key=f"{file_name}.pkl")
-
-#     return file_name
 
 def load_index(file_name):
     # Uncomment to use S3 storage
@@ -164,16 +157,34 @@ async def upload_file(file: UploadFile = File(...)):
 @app.post("/queryBedrock", response_model=QueryResponse)
 async def query_bedrock(request: QueryRequest):
     try:
-        file_name = f"{request.request_id}"
-        vectorstore = load_index(file_name)
-        llm = get_llm()
+        results = []
+        question = "請用繁體中文回答，證券商被罰款多少錢？請以「新臺幣xx萬元」的格式回答"
         
-        # Get LLM response
-        response = get_response(llm, vectorstore, request.question)
+        for filename in request.fileNames:
+            # Get the text file path
+            text_filename = os.path.splitext(filename)[0] + '.txt'
+            text_file_path = os.path.join(folder_path, text_filename)
+            
+            # Read the text content
+            with open(text_file_path, 'r', encoding='utf-8') as f:
+                text_content = f.read()
+            
+            # Create a temporary vector store for this file
+            loader = TextLoader(text_file_path, encoding='utf-8')
+            pages = loader.load_and_split()
+            splitted_docs = split_text(pages)
+            vectorstore = FAISS.from_documents(splitted_docs, bedrock_embeddings)
+            
+            # Get LLM response
+            llm = get_llm()
+            response = get_response(llm, vectorstore, question)
+            
+            results.append({
+                "fileName": filename,
+                "response": response
+            })
         
-        return QueryResponse(
-            response=response
-        )
+        return QueryResponse(results=results)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
