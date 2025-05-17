@@ -8,4 +8,11 @@ langchain-community==0.0.24
 faiss-cpu==1.7.4
 python-magic==0.4.27
 uuid==1.30
-numpy==1.26.4 
+numpy==1.26.4
+sentence-transformers>=2.2.2
+torch>=2.0.0
+numpy>=1.24.0
+pandas>=2.2.0
+openpyxl>=3.1.2
+google-cloud-vision>=3.5.0
+google-cloud-storage>=2.14.0 
